@@ -6,56 +6,139 @@ import subprocess
 from pathlib import Path
 import os
 from latch import small_task, workflow
-from latch.types import LatchFile
+from latch.types import LatchFile, LatchDir
+from typing import Optional
 
 
 @small_task
-def refseq_masher_task(input_file: LatchFile, option: str) -> LatchFile:
+def refseq_masher_task(
+    input_dir: Optional[LatchDir],
+    output_dir: LatchDir,
+    output_name: str,
+    match_option: bool = False,
+    contains_option: bool = False,
+    display_results: int = 50,
+    threads_spawn: int = 1,
+) -> LatchDir:
+
+    # specifying the input
+    allowed_files = ['.fasta', '.fa', '.fastq',
+                     '.fq', '.FASTA', '.FA', '.FASTQ', '.FQ', '.gz']
+    input_files = [f for f in Path(
+        input_dir).iterdir()if f.suffix in allowed_files]
+    file_paths_as_string = [f.as_posix() for f in input_files]
 
     # A reference to our output dir.
-    output_file = Path("refseq").resolve()
+    local_dir = Path("refseq").resolve()
+    local_prefix = os.path.join(local_dir, output_name)
 
-    _refseq_cmd = [
-        "refseq_masher",
-        "-vv",
-        str(option),
-        input_file.local_path,
+    if match_option == True:
+        _refseq_cmd = [
+            "refseq_masher",
+            "-vv",
+            "matches",
+            str(" ".join(file_paths_as_string)),
 
-    ]
-    with open(output_file, "w") as f:
-        subprocess.run(_refseq_cmd, stderr=f, stdout=f)
+        ]
 
-    return LatchFile(str(output_file), f"latch:///{output_file}")
+    if contains_option == True:
+
+        _refseq_cmd = [
+            "refseq_masher",
+            "-vv",
+            "contains",
+            "--top-n-results",
+            str(display_results),
+            "-p",
+            str(threads_spawn),
+            "-o",
+            str(local_prefix),
+            str(" ".join(file_paths_as_string)),
+
+        ]
+
+    subprocess.run(_refseq_cmd, check=True)
+
+    return LatchDir(local_dir, output_dir.remote_path)
 
 
 @ workflow
-def refseq(input_file: LatchFile, option: str) -> LatchFile:
+def refseq(
+    input_dir: Optional[LatchDir],
+    output_dir: LatchDir,
+    output_name: str,
+    match_option: bool = False,
+    contains_option: bool = False,
+    display_results: int = 50,
+    threads_spawn: int = 1,
+) -> LatchDir:
     """Find what NCBI RefSeq genomes match  your sequence data
 
 
 
     __metadata__:
-        display_name: Find what NCBI RefSeq genomes match  your sequence data
+        display_name: Find what NCBI RefSeq genomes match or are contained in your sequence data
         author:
+
             name:
+
             email:
-            github:
-        repository:
+
+            github: 
+        repository: https://github.com/phac-nml/refseq_masher.git
+
         license:
             id: MIT
 
     Args:
 
-        input_file:
-          FASTA/FASTQ file with sequence
+        input_dir:
+          The input directory with FASTA or FASTQ files
 
           __metadata__:
-            display_name: Input File
+            display_name: Input Directory
 
-        option:
-          Option to run
+        output_dir:
+          Where you wish to store your files. *Tip: Create an output directory at the latch console
 
           __metadata__:
-            display_name: Option
+            display_name: Output Directory
+
+        output_name:
+          The name you intend for the output files
+
+          __metadata__:
+            display_name: Output Name
+
+        match_option:
+          *Choose this if you wish to find the closest matching NCBI RefSeq Genomes in your input sequences
+
+          __metadata__:
+            display_name: Match Option
+
+        contains_option:
+          Choose this if you want to find what NCBI RefSeq Genomes are contained in your input sequences
+
+          __metadata__:
+            display_name: Contain option
+
+        display_results:
+          *Enter as interger Output top N results sorted by identity in ascending orde
+
+          __metadata__:
+            display_name: Display results
+
+        threads_spawn:
+          Number of threads to spawn
+
+          __metadata__:
+            display_name: Number of threads to spawn
     """
-    return refseq_masher_task(input_file=input_file, option=option)
+    return refseq_masher_task(
+        input_dir=input_dir,
+        output_dir=output_dir,
+        output_name=output_name,
+        match_option=match_option,
+        contains_option=contains_option,
+        display_results=display_results,
+        threads_spawn=threads_spawn,)
