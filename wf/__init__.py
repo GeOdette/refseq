@@ -22,11 +22,11 @@ def refseq_masher_task(
 ) -> LatchDir:
 
     # specifying the input
-    allowed_files = ['.fasta', '.fa', '.fastq',
-                     '.fq', '.FASTA', '.FA', '.FASTQ', '.FQ', '.gz']
+    file_extensions = ['.fasta', '.fa', '.fastq',
+                       '.fq', '.FASTA', '.FA', '.FASTQ', '.FQ', '.gz']
     input_files = [f for f in Path(
-        input_dir).iterdir()if f.suffix in allowed_files]
-    file_paths_as_string = [f.as_posix() for f in input_files]
+        input_dir).iterdir()if f.suffix in file_extensions]
+    file_paths = [f.as_posix() for f in input_files]
 
     # A reference to our output dir.
     local_dir = Path("refseq").resolve()
@@ -37,7 +37,11 @@ def refseq_masher_task(
             "refseq_masher",
             "-vv",
             "matches",
-            str(" ".join(file_paths_as_string)),
+            "-o",
+            str(local_prefix),
+            "--output-type",
+            "tab",
+            str((file_paths)),
 
         ]
 
@@ -53,7 +57,9 @@ def refseq_masher_task(
             str(threads_spawn),
             "-o",
             str(local_prefix),
-            str(" ".join(file_paths_as_string)),
+            "--output-type",
+            "tab",
+            str((file_paths_as_string)),
 
         ]
 
