@@ -14,7 +14,6 @@ from typing import Optional
 def refseq_masher_task(
     input_dir: Optional[LatchDir],
     output_dir: LatchDir,
-    output_name: str,
     match_option: bool = False,
     contains_option: bool = False,
     display_results: int = 50,
@@ -26,11 +25,10 @@ def refseq_masher_task(
                        '.fq', '.FASTA', '.FA', '.FASTQ', '.FQ', '.gz']
     input_files = [f for f in Path(
         input_dir).iterdir()if f.suffix in file_extensions]
-    file_paths = [f.as_posix() for f in input_files]
+    files = [f.as_posix() for f in input_files]
 
-    # A reference to our output dir.
-    local_dir = Path("refseq").resolve()
-    local_prefix = os.path.join(local_dir, output_name)
+    # creat directory
+    out_dir = Path("local_dir").resolve()
 
     if match_option == True:
         _refseq_cmd = [
@@ -38,10 +36,10 @@ def refseq_masher_task(
             "-vv",
             "matches",
             "-o",
-            str(local_prefix),
+            str(out_dir),
             "--output-type",
             "tab",
-            str((file_paths)),
+            *files,
 
         ]
 
@@ -56,23 +54,22 @@ def refseq_masher_task(
             "-p",
             str(threads_spawn),
             "-o",
-            str(local_prefix),
+            str(out_dir),
             "--output-type",
             "tab",
-            str((file_paths_as_string)),
+            *files,
 
         ]
 
     subprocess.run(_refseq_cmd, check=True)
 
-    return LatchDir(local_dir, output_dir.remote_path)
+    return LatchDir(str(out_dir), output_dir.remote_path)
 
 
 @ workflow
 def refseq(
     input_dir: Optional[LatchDir],
     output_dir: LatchDir,
-    output_name: str,
     match_option: bool = False,
     contains_option: bool = False,
     display_results: int = 50,
@@ -110,12 +107,6 @@ def refseq(
           __metadata__:
             display_name: Output Directory
 
-        output_name:
-          The name you intend for the output files
-
-          __metadata__:
-            display_name: Output Name
-
         match_option:
           *Choose this if you wish to find the closest matching NCBI RefSeq Genomes in your input sequences
 
@@ -143,7 +134,6 @@ def refseq(
     return refseq_masher_task(
         input_dir=input_dir,
         output_dir=output_dir,
-        output_name=output_name,
         match_option=match_option,
         contains_option=contains_option,
         display_results=display_results,
